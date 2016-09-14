@@ -20,3 +20,86 @@
 
 (map (comp count :items deref) [bilbo gandalf])
 (filter (:items @bilbo) (:items @gandalf))
+
+(defn flawed-loot
+  [from to]
+  (dosync
+   (when-let [item (first (:items @from))]
+     (commute to update-in [:items] conj item)
+     (commute from update-in [:items] disj item))))
+
+(wait-futures 1
+              (while (flawed-loot smaug bilbo))
+              (while (flawed-loot smaug gandalf)))
+
+(defn fixed-loot
+  [from to]
+  (dosync
+   (when-let [item (first (:items @from))]
+     (commute to update-in [:items] conj item)
+     (alter from update-in [:items] disj item))))
+
+(wait-futures 1
+              (while (fixed-loot smaug bilbo))
+              (while (fixed-loot smaug gandalf)))
+
+(defn attack
+  [aggressor target]
+  (dosync
+   (let [damage (* (rand 0.1) (:strength @aggressor))]
+     (commute target update-in [:health] #(max 0 (- % damage))))))
+
+(defn heal
+  [healer target]
+  (dosync
+   (let [aid (min (* (rand 0.1) (:mana @healer))
+                  (- (:max-health @target) (:health @target)))]
+     (when (pos? aid)
+       (commute healer update-in [:mana] - (max 5  (/ aid 5)))
+       (alter target update-in [:health] + aid)))))
+
+(def alive? (comp pos? :health))
+
+(defn play
+  [character action other]
+  (while (and (alive? @character)
+              (alive? @other)
+              (action character other))
+    (Thread/sleep (rand-int 50))))
+
+(wait-futures 1
+              (play bilbo attack smaug)
+              (play smaug attack bilbo))
+
+(map (comp :health deref) [smaug bilbo])
+
+(dosync
+ (alter smaug assoc :health 500)
+ (alter bilbo assoc :health 100))
+
+(wait-futures 1
+              (play bilbo attack smaug)
+              (play smaug attack bilbo)
+              (play gandalf heal bilbo))
+
+(map (comp #(select-keys % [:name :health :mana]) deref) [smaug bilbo gandalf])
+
+(defn- enforce-max-health
+  [name health]
+  (fn [character-data]
+    (or (<= (:health character-data) health)
+        (throw (IllegalStateException. (str name " is already at max health!"))))))
+
+(defn character
+  [name & {:as opts}]
+  (let [cdata (merge {:name name :items #{} :health 500}
+                     opts)
+        cdata (assoc cdata :max-health (:health cdata))
+        validators (list* (enforce-max-health name (:health cdata))
+                          (:validator cdata))]
+    (ref (dissoc cdata :validator)
+         :validator #(every? (fn [v] (v %)) validators))))
+
+(dosync (alter bilbo assoc-in [:health] 95))
+
+(heal gandalf bilbo)
