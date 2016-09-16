@@ -5,7 +5,7 @@
 
 (def smaug (character "Smaug" :health 500 :strength 400 :items (set (range 50))))
 (def bilbo (character "Bilbo" :health 100 :strength 100))
-(def gandalf (character "Gandalf" :health 75 :mana 750))
+(def gandalf (character "Gandalf" :health 75 :mana 1000))
 
 (defn loot
   [from to]
@@ -77,11 +77,6 @@
  (alter smaug assoc :health 500)
  (alter bilbo assoc :health 100))
 
-(wait-futures 1
-              (play bilbo attack smaug)
-              (play smaug attack bilbo)
-              (play gandalf heal bilbo))
-
 (map (comp #(select-keys % [:name :health :mana]) deref) [smaug bilbo gandalf])
 
 (defn- enforce-max-health
@@ -102,4 +97,30 @@
 
 (dosync (alter bilbo assoc-in [:health] 95))
 
-(heal gandalf bilbo)
+(require '[clojure.java.io :as io])
+
+(def console (agent *out*))
+(def character-log (agent (io/writer "character-state.log" :append true)))
+
+(defn write
+  [^java.io.Writer w & content]
+  (doseq [x (interpose " " content)]
+    (.write w (str x)))
+  (doto w
+    (.write "\n")
+    .flush))
+
+(defn log-reference
+  [reference & writer-agents]
+  (add-watch reference :log
+             (fn [_ reference old new]
+               (doseq [writer-agent writer-agents]
+                 (send-off writer-agent write new)))))
+
+(log-reference bilbo console character-log)
+(log-reference smaug console character-log)
+
+(wait-futures 1
+             (play bilbo attack smaug)
+             (play smaug attack bilbo)
+             (play gandalf heal bilbo))
