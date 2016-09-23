@@ -1,40 +1,33 @@
 (ns-unmap *ns* 'fill)
 
+(def fill-hierarchy (-> (make-hierarchy)
+                        (derive :input.radio ::checkable)
+                        (derive :input.checkbox ::checkable)
+                        (derive ::checkable :input)
+                        (derive :input.text :input)
+                        (derive :input.hidden :input)))
+
 (defn- fill-dispatch [node value]
-  (if (= :input (:tag node))
-    [(:tag node) (-> node :attrs :type)]
+  (if-let [type (and (= :input (:tag node))
+                     (-> node :attrs :type))]
+    (keyword (str "input." type))
     (:tag node)))
 
 (defmulti fill
   "Fill a xml/html node (as per clojure.xml)
   with the provided value."
   #'fill-dispatch
-  :default nil)
+  :default nil
+  :hierarchy #'fill-hierarchy)
 
 (defmethod fill nil
   [node value]
   (assoc node :content [(str value)]))
 
-(defmethod fill [:input nil]
-  [node value]
-  (assoc-in node [:attrs :value] (str value)))
+(defmethod fill :input [node value]
+  (assoc-in [:attrs :value] (str value)))
 
-(defmethod fill [:input "hidden"]
-  [node value]
-  (assoc-in node [:attrs :value] (str value)))
-
-(defmethod fill [:input "text"]
-  [node value]
-  (assoc-in node [:attrs :value] (str value)))
-
-(defmethod fill [:input "radio"]
-  [node value]
-  (if (= value (-> node :attrs :value))
-    (assoc-in node [:attrs :checked] "checked")
-    (update-in node [:attrs] dissoc :checked)))
-
-(defmethod fill [:input "checkbox"]
-  [node value]
+(defmethod fill ::checkable [node value]
   (if (= value (-> node :attrs :value))
     (assoc-in node [:attrs :checked] "checked")
     (update-in node [:attrs] dissoc :checked)))
