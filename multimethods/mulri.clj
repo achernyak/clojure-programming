@@ -32,9 +32,13 @@
     (assoc-in node [:attrs :checked] "checked")
     (update-in node [:attrs] dissoc :checked)))
 
-(defmethod fill :default
-  [node value]
-  (assoc-in node [:attrs :value] [(str value)]))
+(defmethod fill nil [node value]
+  (if (= :input (:tag node))
+    (do
+      (alter-var-root #'fill-hierarchy
+                      derive (fill-dispatch node value) :input)
+      (fill node value))
+    (assoc node :content [(str value)])))
 
 (fill {:tag :input
        :attrs {:value "first choice"
