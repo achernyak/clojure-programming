@@ -5,23 +5,42 @@
                         (derive :input.checkbox ::checkable)))
 
 (defn- fill-dispatch [node value]
-    (:tag node))
+  (if-let [type (and (= :input (:tag node))
+                     (-> node :attrs :type))]
+    [(keyword (str "input." type)) (class value)]
+    [(:tag node) (class value)]))
 
 (defmulti fill
   "Fill a xml/html node (as per clojure.xml)
   with the provided value."
   #'fill-dispatch
-  :default nil)
+  :default nil
+  :hierarchy #'fill-hierarchy)
+
+(defmethod fill nil [node value]
+  [node value]
+  (if (= :input (:tag node))
+    (do
+      (alter-var-root #'fill-hierarchy
+                      derive (first (fill-dispatch node value)) :input)
+      (fill node value))
+    (assoc node :content [(str value)])))
+
+(defmethod fill
+  [:input Object] [node value]
+  (assoc-in node [:attrs :value] (str value)))
+
+(defmethod fill [::checkable clojure.lang.IPersistentSet]
+  [node value]
+  (if (contains? value (-> node :attrs :value))
+    (assoc-in node [:attrs :checked] "checked")
+    (update-in node [:attrs] dissoc :checked)))
 
 (defmulti fill-input
   "Fill an input field."
   (fn [node value] (-> node :attrs :type))
   :default nil
   :hierarchy #'input-hierarchy)
-
-(defmethod fill nil [node value]
-  [node value]
-  (assoc node :content [(str value)]))
 
 (defmethod fill :input [node value]
   (fill-input node value))
