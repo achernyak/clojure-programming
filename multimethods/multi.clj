@@ -63,3 +63,46 @@
 (fill {:tag :input
        :attrs {:type "date"}}
       "20110820")
+
+(ns-unmap *ns* 'run)
+
+(defmulti run "Executes the computation." type)
+
+(defmethod run Runnable
+  [x]
+  (.run x))
+
+(defmethod run java.util.concurrent.Callable
+  [x]
+  (.call x))
+
+(defmethod run :runnable-map
+  [m]
+  (run (:run m)))
+
+(prefer-method run java.util.concurrent.Callable Runnable)
+
+(run ^{:type :runnable-map}
+  {:run #(println "hello!") :other :data})
+
+(run #(println "hello!"))
+
+(def priorities (atom {:911-call :high
+                       :evacuation :high
+                       :pothole-report :low
+                       :tree-down :low}))
+
+(defmulti route-message
+  (fn [message] (@priorities (:type message))))
+
+(defmethod route-message :low
+  [{:keys [type]}]
+  (println (format "Oh, there's another %s. Put it in the log." (name type))))
+
+(defmethod route-message :high
+  [{:keys [type]}]
+  (println (format "Alert the authorities, there's a %s!" (name type))))
+
+(route-message {:type :911-call})
+
+(route-message {:type :tree-down})
