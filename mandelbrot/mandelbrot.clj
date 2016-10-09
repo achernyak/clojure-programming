@@ -6,7 +6,7 @@
   before teh value of z (using the components `a` and `b`) could
   be determined to have excaped the Mandelbrot set. If z
   will not excape, -1 is returned."
-  [a0 b0 depth]
+  [^double a0 ^double b0 depth]
   (loop [a a0
          b b0
          iteration 0]
@@ -82,3 +82,8 @@
 
 (do (time (mandelbrot -2.25 0.75 -1.5 1.5
                       :width 1600 :height 1200 :depth 1000)))
+
+(render-image (mandelbrot -2.25 0.75 -1.5 1.5
+                          :width 1600 :height 1200 :depth 1000))
+
+(javax.imageio.ImageIO/write *1 "png" (java.io.File. "mandelbrot.png"))
