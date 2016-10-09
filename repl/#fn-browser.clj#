@@ -29,17 +29,18 @@
                                                 (actionPerformed [_ e] (show-info))))))
                   (.setVisible true)))
 
-(reduce
- (loop [num 123
-        acc []]
-   (if (num < 10)
-     acc
-     (recur (quot num 10)
-            (conj acc (rem num 10))))))
+(defn sum [base]
+ (reduce + (loop [num base acc []]
+             (if (< num 10)
+               (conj acc num)
+               (recur (quot num 10)
+                      (conj acc (rem num 10)))))))
+
 
 (let [initval 10
       patternl [2, 1, 3]
       nthterm 6]
-  (reduce + initval
-          (take (dec nthterm)
-                (cycle patternl))))
+  (sum
+   (reduce + initval
+           (take (dec nthterm)
+                 (cycle patternl)))))
