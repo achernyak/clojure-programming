@@ -77,14 +77,8 @@ return rereduce ? sum(vals) : vals.length;
 
 (clutch/bulk-update "changes" [{:_id "doc4"}])
 
-(ns eventing.processing)
-
-(derive 'sales/lead-generation 'processing/realtime)
-(derive 'sals/purchase 'processing/realtime)
-
-(derive 'security/all )
-
 (defn -main
   "I don't do a whole lot ... yet."
   [& args]
   (println "Hello, World!"))
+
